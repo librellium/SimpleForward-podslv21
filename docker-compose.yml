@@ -1,0 +1,7 @@
+services:
+  simpleforward:
+    build: .
+    labels:
+      description: "Telegram-бот для анонимных сообщений"
+    volumes:
+      - ./config.yml:/app/config.yml

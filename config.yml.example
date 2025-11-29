@@ -1,0 +1,14 @@
+bot:
+  token:
+  timeout: 10
+forwarding:
+  target_chat_id:
+  message_template: "🔔 У вас новое сообщение!\n\n<blockquote>{text}</blockquote>"
+  types:
+    - text
+    - photo
+    - video
+logging:
+  level: "INFO"
+  fmt: "%(asctime)s.%(msecs)03d %(levelname)s [%(name)s] %(message)s"
+  date_fmt: "%Y-%m-%d %H:%M:%S"
