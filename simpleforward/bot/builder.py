@@ -6,7 +6,7 @@ from simpleforward.config import Config
 from simpleforward.moderation import AsyncModerator
 
 from .message_manager import MessageManager
-from .routers.photo import PhotoRouter
+from .routers.media import MediaRouter
 from .routers.start import StartRouter
 from .routers.text import TextRouter
 
@@ -21,7 +21,7 @@ def build(config: Config,
         TextRouter(
             config, message_manager, moderator
         ),
-        PhotoRouter(
+        MediaRouter(
             config, message_manager, moderator
         )
     )
