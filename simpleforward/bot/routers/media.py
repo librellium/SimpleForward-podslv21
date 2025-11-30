@@ -11,7 +11,7 @@ from simpleforward.config import Config
 from simpleforward.moderation import AsyncModerator
 
 
-class PhotoRouter(Router):
+class MediaRouter(Router):
     def __init__(self,
                  config: Config,
                  message_manager: MessageManager,
