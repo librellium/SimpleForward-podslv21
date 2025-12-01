@@ -2,19 +2,20 @@ import inspect
 import json
 import logging
 from json import JSONDecodeError
-from typing import Dict, List
+from typing import Dict, List, Union
 
-from openai import AsyncOpenAI, APIResponseValidationError
+from openai import APIResponseValidationError, AsyncOpenAI
 
-from .rule_manager import RuleManager
 from podslv21_bot.config import Config
 
+from .rule_manager import RuleManager
 
-class AsyncModerator:
+
+class ModerationPlanner:
     def __init__(self,
                  config: Config,
                  rule_manager: RuleManager):
-        self._logger = logging.getLogger("simpleforward.moderation.executor")
+        self._logger = logging.getLogger("podslv21_bot.moderation.planner")
 
         self.config = config
         self.rule_manager = rule_manager
@@ -26,7 +27,11 @@ class AsyncModerator:
 
         self._functions: List[Dict[str]] = []
 
-    def add_functions(self, *functions):
+    def set_functions(self, *functions):
+        if not functions:
+            return
+
+        self._functions.clear()
         for func in functions:
             sig = inspect.signature(func)
             args = {name: str(param.annotation) if param.annotation != inspect._empty else "str"
@@ -38,7 +43,12 @@ class AsyncModerator:
                 "description": func.__doc__ or ""
             })
 
-    async def plan(self, message: str):
+        self._logger.info(f"Functions added: {', '.join(self.get_function_names())} total={len(self._functions)}")
+
+    def get_function_names(self) -> Union[List[str], None]:
+        return [f.get("name") for f in self._functions]
+
+    async def plan(self, message_text: str) -> List[Dict[str, Union[list, str]]]:
         funcs = self._functions
         funcs_prompt = "\n".join(
             f"- {func['name']}({', '.join(f'{arg}: {ann}' for arg, ann in (func.get('args') or {}).items())})"
@@ -48,6 +58,7 @@ class AsyncModerator:
 
         retry = 0
         result = None
+
         while retry <= self._client.max_retries:
             response = await self._client.responses.create(
                 model=self.config.moderation.model,
@@ -55,17 +66,23 @@ class AsyncModerator:
                     {
                         "role": "system",
                         "content": "Ответь строго JSON-массивом вида:\n"
-                                   '`[{"function": ..., "args": [...]}, ...]`\n'
+                                   '`[{"name": ..., "args": [...]}, ...]`\n'
+                                   "`name` - название функции, `args` - последовательность аргументов.\n"
                                    "Выведи только подходящий JSON, выбирай функции в "
                                    "соответствии с запросом пользователя и описанием функции "
                                    "Ты в праве вызывать несколько функций, указывая их по порядку в выводе.\n\n"
+                                   "**ВАЖНО:**\n"
+                                   "- Каждая функция должна содержать **все и только обязательные аргументы**, указанные в её описании.\n"
+                                   "- Не придумывай дополнительных аргументов.\n"
+                                   "- Не пропускай обязательные аргументы.\n"
+                                   "- `args` должны быть в том порядке, который указан в описании функции.\n\n"
                                    "Доступные функции:\n"
                                    f"{funcs_prompt}"
                     },
                     *[{"role": "system", "content": rule} for rule in self.rule_manager.get_rules()],
                     {
                         "role": "user",
-                        "content": message
+                        "content": message_text
                     }
                 ]
             )
@@ -81,7 +98,7 @@ class AsyncModerator:
             except JSONDecodeError:
                 retry += 1
 
-        if result is None:
+        if not result:
             raise APIResponseValidationError()
 
         return result
