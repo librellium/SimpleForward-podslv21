@@ -1,14 +1,26 @@
 bot:
-  token:
+  token: null
   timeout: 10
 forwarding:
-  target_chat_id:
-  message_template: "🔔 У вас новое сообщение!\n\n<blockquote>{text}</blockquote>"
+  intermediate_chat_id: null
+  target_chat_id: null
+  message_template: "<b>Сообщение из предложки</b>\n\n<blockquote>{text}</blockquote>"
   types:
-    - text
-    - photo
-    - video
+  - text
+  - photo
+  - video
+openai:
+  api_key: null
+  timeout: 10
+  max_retries: 0
+moderation:
+  enabled: true
+  model: gpt-5-mini
+  types:
+  - links
+  - omni
+  - gpt
 logging:
-  level: "INFO"
-  fmt: "%(asctime)s.%(msecs)03d %(levelname)s [%(name)s] %(message)s"
-  date_fmt: "%Y-%m-%d %H:%M:%S"
+  level: INFO
+  fmt: '%(asctime)s.%(msecs)03d %(levelname)s [%(name)s] %(message)s'
+  date_fmt: '%Y-%m-%d %H:%M:%S'
