@@ -9,19 +9,19 @@ from aiogram.types import InputMediaPhoto, InputMediaVideo, Message
 
 from podslv21_bot.bot.message_manager import MessageManager
 from podslv21_bot.config import Config
-from podslv21_bot.moderation import AsyncModerator
+from podslv21_bot.moderation import ModerationExecutor
 
 
 class MediaRouter(Router):
     def __init__(self,
                  config: Config,
                  message_manager: MessageManager,
-                 moderator: Optional[AsyncModerator] = None):
+                 executor: Optional[ModerationExecutor] = None):
         super().__init__()
 
         self.config = config
         self.message_manager = message_manager
-        self.moderator = moderator
+        self.executor = executor
 
         self.media_groups: Dict[int, List[str]] = {}
         self.media_groups_tasks: Dict[int, asyncio.Task] = {}
@@ -67,16 +67,31 @@ class MediaRouter(Router):
 
                 try:
                     if can_send_media(messages):
+                        sent_message = await message.answer("Сообщение отправлено на модерацию...")
                         if len(messages) > 1:
+                            media = []
+                            for msg in messages:
+                                if self.config.moderation.enabled and msg.caption:
+                                    async for event in self.executor.process_message(msg.caption):
+                                        if event.type == "moderation_decision" and event.result.status == "REJECT":
+                                            await sent_message.edit_text("Сообщение не прошло модерацию.")
+                                            return
+
+                                media.append(get_media(msg))
+
                             group_message_id = (await bot.send_media_group(
                                 self.config.forwarding.target_chat_id,
-                                [
-                                    get_media(msg)
-                                    for msg in messages
-                                ]
+                                media
                             ))[0].message_id
                         elif len(messages) == 1:
                             msg = messages[0]
+                            caption = msg.caption
+
+                            if self.config.moderation.enabled:
+                                async for event in self.executor.process_message(caption):
+                                    if event.type == "moderation_decision" and event.result.status == "REJECT":
+                                        await sent_message.edit_text("Сообщение не прошло модерацию.")
+                                        return
 
                             func = bot.send_photo if msg.photo else bot.send_video
                             file_id = msg.photo[-1].file_id if msg.photo else msg.video.file_id
@@ -89,9 +104,9 @@ class MediaRouter(Router):
                             )).message_id
 
                         self.message_manager.add(reply_to_message_id, group_message_id, message.chat.id)
-                        await message.answer("✅ Сообщение успешно отправлено!")
+                        await message.answer("Сообщение успешно отправлено!")
                 except (TelegramBadRequest, TelegramForbiddenError) as e:
-                    await message.answer(f'❌ Не удалось отправить сообщение: "{e}"')
+                    await message.answer(f'Не удалось отправить сообщение: "{e}"')
 
             media_group_id = message.media_group_id
 
