@@ -7,19 +7,19 @@ from aiogram.types import Message
 
 from podslv21_bot.bot.message_manager import MessageManager
 from podslv21_bot.config import Config
-from podslv21_bot.moderation import AsyncModerator
+from podslv21_bot.moderation import ModerationExecutor
 
 
 class TextRouter(Router):
     def __init__(self,
                  config: Config,
                  message_manager: MessageManager,
-                 moderator: Optional[AsyncModerator] = None):
+                 executor: Optional[ModerationExecutor] = None):
         super().__init__()
 
         self.config = config
         self.message_manager = message_manager
-        self.moderator = moderator
+        self.executor = executor
 
         self._register_handlers()
 
@@ -36,11 +36,20 @@ class TextRouter(Router):
                         reply_to_message_id, chat_id = result
                         try:
                             await bot.send_message(chat_id, message.text, reply_to_message_id=reply_to_message_id)
-                            await message.answer("✅ Ответ успешно отправлен!")
+                            await message.answer("Ответ успешно отправлен!")
                         except (TelegramBadRequest, TelegramForbiddenError) as e:
-                            await message.answer(f'❌ Не удалось отправить ответ: "{e}"')
+                            await message.answer(f'Не удалось отправить ответ: "{e}"')
             elif message.chat.type == ChatType.PRIVATE and "text" in self.config.forwarding.types:
                 try:
+                    if self.config.moderation.enabled:
+                        sent_message = await message.answer("Сообщение отправлено на модерацию...")
+                        async for event in self.executor.process_message(message.text):
+                            if event.type == "moderation_decision" and event.result.status == "REJECT":
+                                await sent_message.edit_text("Сообщение не прошло модерацию.")
+                                return
+
+                        await sent_message.delete()
+
                     reply_to_message_id = message.message_id
                     group_message_id = (await bot.send_message(
                         self.config.forwarding.target_chat_id,
@@ -49,6 +58,6 @@ class TextRouter(Router):
                     )).message_id
 
                     self.message_manager.add(reply_to_message_id, group_message_id, message.chat.id)
-                    await message.answer("✅ Сообщение успешно отправлено!")
+                    await message.answer("Сообщение успешно отправлено!")
                 except (TelegramBadRequest, TelegramForbiddenError) as e:
-                    await message.answer(f'❌ Не удалось отправить сообщение: "{e}"')
+                    await message.answer(f'Не удалось отправить сообщение: "{e}"')
