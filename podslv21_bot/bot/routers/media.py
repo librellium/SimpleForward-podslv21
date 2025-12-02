@@ -67,44 +67,70 @@ class MediaRouter(Router):
 
                 try:
                     if can_send_media(messages):
+                        moderation = self.config.moderation.enabled
+                        moderation_passed = not moderation
+
+                        group_message_id = None
+                        targets = {
+                            self.config.forwarding.moderation_chat_id: True
+                        }
+
                         sent_message = await message.answer("Сообщение отправлено на модерацию...")
                         if len(messages) > 1:
                             media = []
                             for msg in messages:
-                                if self.config.moderation.enabled and msg.caption:
+                                if moderation and msg.caption:
                                     async for event in self.executor.process_message(msg.caption):
-                                        if event.type == "moderation_decision" and event.result.status == "REJECT":
-                                            await sent_message.edit_text("Сообщение не прошло модерацию.")
-                                            return
+                                        if event.type == "moderation_decision":
+                                            if event.result.status == "PASS":
+                                                moderation_passed = True
+                                            elif event.result.status == "REJECT":
+                                                await sent_message.edit_text("Сообщение не прошло модерацию.")
 
                                 media.append(get_media(msg))
 
-                            group_message_id = (await bot.send_media_group(
-                                self.config.forwarding.target_chat_id,
-                                media
-                            ))[0].message_id
+                            if moderation_passed:
+                                targets[self.config.forwarding.publication_chat_id] = False
+
+                            for target, save_message_id in targets.items():
+                                messages = await bot.send_media_group(
+                                    target,
+                                    media
+                                )
+
+                                if save_message_id:
+                                    group_message_id = messages[0].message_id
                         elif len(messages) == 1:
                             msg = messages[0]
                             caption = msg.caption
 
-                            if self.config.moderation.enabled:
+                            if moderation and caption:
                                 async for event in self.executor.process_message(caption):
-                                    if event.type == "moderation_decision" and event.result.status == "REJECT":
-                                        await sent_message.edit_text("Сообщение не прошло модерацию.")
-                                        return
+                                    if event.type == "moderation_decision":
+                                        if event.result.status == "PASS":
+                                            moderation_passed = True
+                                        elif event.result.status == "REJECT":
+                                            await sent_message.edit_text("Сообщение не прошло модерацию.")
+
+                            targets[self.config.forwarding.publication_chat_id] = False
 
                             func = bot.send_photo if msg.photo else bot.send_video
                             file_id = msg.photo[-1].file_id if msg.photo else msg.video.file_id
 
-                            group_message_id = (await func(
-                                self.config.forwarding.target_chat_id,
-                                file_id,
-                                caption=self.config.forwarding.message_template.format(text=msg.caption or ""),
-                                parse_mode="HTML"
-                            )).message_id
+                            for target, save_message_id in targets.items():
+                                msg = await func(
+                                    target,
+                                    file_id,
+                                    caption=self.config.forwarding.message_template.format(text=msg.caption or ""),
+                                    parse_mode="HTML"
+                                )
+
+                                if save_message_id:
+                                    group_message_id = msg.message_id
 
                         self.message_manager.add(reply_to_message_id, group_message_id, message.chat.id)
-                        await message.answer("Сообщение успешно отправлено!")
+                        if moderation_passed:
+                            await message.answer("Сообщение успешно отправлено!")
                 except (TelegramBadRequest, TelegramForbiddenError) as e:
                     await message.answer(f'Не удалось отправить сообщение: "{e}"')
 
