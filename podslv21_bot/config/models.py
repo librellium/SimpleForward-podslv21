@@ -11,8 +11,8 @@ class Bot(BaseModel):
     timeout: int = 10
 
 class Forwarding(BaseModel):
-    intermediate_chat_id: Optional[int] = None
-    target_chat_id: Optional[int] = None
+    moderation_chat_id: Optional[int] = None
+    publication_chat_id: Optional[int] = None
     message_template: str = "🔔 У вас новое сообщение!\n\n<blockquote>{text}</blockquote>"
     types: List[ForwardingType] = ["text", "photo", "video"]
 
