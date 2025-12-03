@@ -15,7 +15,7 @@ class ModerationPlanner:
     def __init__(self,
                  config: Config,
                  rule_manager: RuleManager):
-        self._logger = logging.getLogger("podslv21_bot.moderation.planner")
+        self._logger = logging.getLogger(__name__)
 
         self.config = config
         self.rule_manager = rule_manager
@@ -43,12 +43,22 @@ class ModerationPlanner:
                 "description": func.__doc__ or ""
             })
 
-        self._logger.info(f"Functions added: {', '.join(self.get_function_names())} total={len(self._functions)}")
+        self._logger.info(f"Functions added: {', '.join(self.get_function_names())}. Total={len(self._functions)}")
 
     def get_function_names(self) -> Union[List[str], None]:
         return [f.get("name") for f in self._functions]
 
     async def plan(self, message_text: str) -> List[Dict[str, Union[list, str]]]:
+        mod_response = await self._client.moderations.create(
+            model="omni-moderation-latest",
+            input=[
+                {
+                    "type": "text",
+                    "text": message_text
+                }
+            ]
+        )
+
         funcs = self._functions
         funcs_prompt = "\n".join(
             f"- {func['name']}({', '.join(f'{arg}: {ann}' for arg, ann in (func.get('args') or {}).items())})"
