@@ -7,7 +7,7 @@ from yarl import URL
 
 from podslv21_bot.config import Config
 
-from .models import ModerationEvent, ModerationDecision
+from .models import ModerationDecision, ModerationEvent
 from .planner import ModerationPlanner
 
 
@@ -16,7 +16,7 @@ class ModerationExecutor:
                  config: Config,
                  bot: Bot,
                  planner: ModerationPlanner):
-        self._logger = logging.getLogger("podslv21_bot.moderation.executor")
+        self._logger = logging.getLogger(__name__)
 
         self.config = config
         self.bot = bot
