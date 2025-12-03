@@ -5,24 +5,31 @@ from aiogram import Router
 from podslv21_bot.config import Config
 from podslv21_bot.moderation import ModerationExecutor
 
-from .message_manager import MessageManager
-from .routers.media import MediaRouter
-from .routers.start import StartRouter
-from .routers.text import TextRouter
+from .routers import MediaRouter, StartRouter, TextRouter
+from .utils import MessageManager, TemplateRenderer
 
 
 def build(config: Config,
           message_manager: MessageManager,
+          template_renderer: TemplateRenderer,
           executor: Optional[ModerationExecutor] = None):
     main_router = Router()
 
     main_router.include_routers(
-        StartRouter(),
+        StartRouter(
+            template_renderer=template_renderer
+        ),
         TextRouter(
-            config, message_manager, executor
+            config=config,
+            message_manager=message_manager,
+            template_renderer=template_renderer,
+            moderation_executor=executor
         ),
         MediaRouter(
-            config, message_manager, executor
+            config=config,
+            message_manager=message_manager,
+            template_renderer=template_renderer,
+            moderation_executor=executor
         )
     )
 
