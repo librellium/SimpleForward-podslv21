@@ -17,5 +17,5 @@ class StartRouter(Router):
         @self.message(CommandStart())
         async def on_start(message: Message):
             await message.answer(
-                await self.renderer.render("commands/start.j2", message)
+                await self.renderer.render("commands/start.j2", message=message)
             )
