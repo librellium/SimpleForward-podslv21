@@ -5,6 +5,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
 from yarl import URL
 
+from anonflow.bot.utils.template_renderer import TemplateRenderer
 from anonflow.config import Config
 
 from .models import ModerationDecision, ModerationEvent
@@ -15,14 +16,19 @@ class ModerationExecutor:
     def __init__(self,
                  config: Config,
                  bot: Bot,
+                 template_renderer: TemplateRenderer,
                  planner: ModerationPlanner):
         self._logger = logging.getLogger(__name__)
 
         self.config = config
         self.bot = bot
+        self.renderer = template_renderer
 
         self.planner = planner
-        self.planner.set_functions(self.delete_message, self.moderation_decision)
+        self.planner.set_functions(
+            self.delete_message,
+            self.moderation_decision
+        )
 
     async def delete_message(self, message_link: str):
         """
@@ -43,34 +49,37 @@ class ModerationExecutor:
                     await self.bot.delete_message(publication_chat_id, message_id)
                     await self.bot.send_message(
                         moderation_chat_id,
-                        f"<b>Исполнитель</b>: Удаление успешно для {message_id}.",
+                        await self.renderer.render("messages/staff/deletion/success.j2", message_id=message_id),
                         parse_mode="HTML"
                     )
                     return ModerationEvent(type="delete_message", result=True)
                 except TelegramBadRequest:
                     await self.bot.send_message(
                         moderation_chat_id,
-                        f"<b>Исполнитель</b>: Удаление окончилось ошибкой для {message_id}.",
+                        await self.renderer.render("messages/staff/deletion/failure.j2", message_id=message_id),
                         parse_mode="HTML"
                     )
                     return ModerationEvent(type="delete_message", result=False)
 
-    async def moderation_decision(self, status: Literal["PASS", "REJECT"], explanation: str):
+    async def moderation_decision(self, status: Literal["APPROVE", "REJECT"], explanation: str):
         """
         Processes a message with a moderation decision by status and explanation. 
         This function must be called whenever there is no exact user request or no other available function 
-        matching the user's intent. Status must be either "PASS" if the message is allowed, or "REJECT" if it should be blocked.
+        matching the user's intent. Status must be either "APPROVE" if the message is allowed, or "REJECT" if it should be blocked.
         """
         moderation_chat_id = self.config.forwarding.moderation_chat_id
-        human_status = "отправлено" if status == "PASS" else "отклонено"
 
         await self.bot.send_message(
             moderation_chat_id,
-            f"<b>Исполнитель</b>: Сообщение {human_status}.\n\nОбъяснение: {explanation}",
+            await self.renderer.render(
+                f"messages/staff/moderation/{'approved' if status == 'APPROVE' else 'rejected'}.j2",
+                status=status,
+                explanation=explanation
+            ),
             parse_mode="HTML"
         )
 
-        if status not in ("PASS", "REJECT"):
+        if status not in ("APPROVE", "REJECT"):
             return ModerationEvent(type="moderation_decision", result=ModerationDecision(status="REJECT", explanation=explanation))
 
         return ModerationEvent(type="moderation_decision", result=ModerationDecision(status=status, explanation=explanation))
