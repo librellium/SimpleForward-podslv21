@@ -23,7 +23,7 @@ class RuleManager:
                 if rule:
                     self._rules.append(rule)
 
-        self._logger.info(f"Rules loaded. Total={len(self._rules)}")
+        self._logger.info("Rules loaded. Total=%d", len(self._rules))
 
     def get_rules(self):
         return self._rules
