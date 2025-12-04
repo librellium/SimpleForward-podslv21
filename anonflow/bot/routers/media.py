@@ -1,6 +1,7 @@
 import asyncio
 from asyncio import CancelledError
 from typing import Dict, List, Optional
+import logging
 
 from aiogram import Bot, F, Router
 from aiogram.enums import ChatType
@@ -47,7 +48,7 @@ class MediaRouter(Router):
                 return (photos and "photo" in self.config.forwarding.types) or (videos and "video" in self.config.forwarding.types)
 
             def get_media(msg: Message):
-                caption = self.config.forwarding.message_template.format(text=msg.caption) if msg.caption else None
+                caption = self.renderer.render("messages/channel/media.j2", message=msg)
                 parse_mode = "HTML" if msg.caption else None
 
                 if msg.photo and "photo" in self.config.forwarding.types:
@@ -79,7 +80,7 @@ class MediaRouter(Router):
                         }
 
                         sent_message = await message.answer(
-                            await self.renderer.render("messages/moderation/pending.j2", message)
+                            await self.renderer.render("messages/users/moderation/pending.j2", message=message)
                         )
                         if len(messages) > 1:
                             media = []
@@ -87,11 +88,11 @@ class MediaRouter(Router):
                                 if moderation and msg.caption:
                                     async for event in self.executor.process_message(msg.caption):
                                         if event.type == "moderation_decision":
-                                            if event.result.status == "PASS":
+                                            if event.result.status == "APPROVE":
                                                 moderation_passed = True
                                             elif event.result.status == "REJECT":
                                                 await message.answer(
-                                                    await self.renderer.render("messages/moderation/rejected.j2", message)
+                                                    await self.renderer.render("messages/users/moderation/rejected.j2", message=message)
                                                 )
 
                                     await sent_message.delete()
@@ -116,11 +117,11 @@ class MediaRouter(Router):
                             if moderation and caption:
                                 async for event in self.executor.process_message(caption):
                                     if event.type == "moderation_decision":
-                                        if event.result.status == "PASS":
+                                        if event.result.status == "APPROVE":
                                             moderation_passed = True
                                         elif event.result.status == "REJECT":
                                             await message.answer(
-                                                await self.renderer.render("messages/moderation/rejected.j2", message)
+                                                await self.renderer.render("messages/users/moderation/rejected.j2", message=message)
                                             )
 
                                 await sent_message.delete()
@@ -131,24 +132,24 @@ class MediaRouter(Router):
                             file_id = msg.photo[-1].file_id if msg.photo else msg.video.file_id
 
                             for target, save_message_id in targets.items():
-                                msg = await func(
+                                m = await func(
                                     target,
                                     file_id,
-                                    caption=self.config.forwarding.message_template.format(text=msg.caption or ""),
+                                    caption=await self.renderer.render("messages/channel/media.j2", message=msg),
                                     parse_mode="HTML"
                                 )
 
                                 if save_message_id:
-                                    group_message_id = msg.message_id
+                                    group_message_id = m.message_id
 
                         self.message_manager.add(reply_to_message_id, group_message_id, message.chat.id)
                         if moderation_passed:
                             await message.answer(
-                                await self.renderer.render("messages/send/success.j2", message)
+                                await self.renderer.render("messages/users/send/success.j2", message=message)
                             )
                 except (TelegramBadRequest, TelegramForbiddenError) as e:
                     await message.answer(
-                        await self.renderer.render("messages/send/success.j2", message)
+                        await self.renderer.render("messages/users/send/failure.j2", message=message, exception=e)
                     )
 
             media_group_id = message.media_group_id
