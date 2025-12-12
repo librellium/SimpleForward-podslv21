@@ -207,6 +207,9 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Pyright configuration file
+pyrightconfig.json
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
