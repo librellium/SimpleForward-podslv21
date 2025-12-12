@@ -21,18 +21,19 @@ def build(
     main_router.include_routers(
         StartRouter(template_renderer=template_renderer),
         InfoRouter(template_renderer=template_renderer),
-        MediaRouter(
-            config=config,
-            message_manager=message_manager,
-            template_renderer=template_renderer,
-            moderation_executor=executor,
-        ),
         TextRouter(
             config=config,
             message_manager=message_manager,
             template_renderer=template_renderer,
             moderation_executor=executor,
-            event_handler=event_handler
+            event_handler=event_handler,
+        ),
+        MediaRouter(
+            config=config,
+            message_manager=message_manager,
+            template_renderer=template_renderer,
+            moderation_executor=executor,
+            event_handler=event_handler,
         ),
     )
 
