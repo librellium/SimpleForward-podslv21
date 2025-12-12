@@ -34,9 +34,31 @@ class EventHandler:
                 )
             )
         elif isinstance(event, ModerationDecisionEvent):
+            for chat_id in moderation_chat_ids:
+                if event.approved:
+                    await message.bot.send_message(
+                        chat_id,
+                        await self.renderer.render(
+                            "messages/staff/moderation/approved.j2",
+                            message=message,
+                            explanation=event.explanation,
+                        )
+                    )
+                else:
+                    await message.bot.send_message(
+                        chat_id,
+                        await self.renderer.render(
+                            "messages/staff/moderation/rejected.j2",
+                            message=message,
+                            explanation=event.explanation,
+                        )
+                    )
+
             with suppress(TelegramBadRequest):
-                if message.chat.id in self._messages:
-                    await self._messages.get(message.chat.id).delete()
+                msg = self._messages.get(message.chat.id)
+                if isinstance(msg, Message):
+                    await msg.delete()
+
             if event.approved:
                 await message.answer(
                     await self.renderer.render(
