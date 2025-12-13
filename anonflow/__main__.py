@@ -4,7 +4,6 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.bot import DefaultBotProperties
 
-from anonflow import __version_str__
 from anonflow.bot import (
     EventHandler,
     MessageManager,
@@ -25,13 +24,12 @@ from . import paths
 
 
 async def main():
-    with open(".env", "w") as env_file:
-        env_file.write(f"APP_VERSION={__version_str__}\n")
+    config_file = paths.CONFIG_FILE
 
-    if not paths.CONFIG_FILE.exists():
-        Config().save(paths.CONFIG_FILE)
+    if not config_file.exists():
+        Config().save(config_file)
 
-    config = Config.load(paths.CONFIG_FILE)
+    config = Config.load(config_file)
 
     logging.basicConfig(
         format=config.logging.fmt,
