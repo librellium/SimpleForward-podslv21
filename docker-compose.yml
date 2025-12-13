@@ -1,11 +1,12 @@
 services:
   bot:
-    image: "anonflow:${APP_VERSION}"
+    image: "anonflow:${VERSION}"
     build:
       context: .
       dockerfile: Dockerfile
     labels:
-      version: "${APP_VERSION}"
+      version: "${VERSION}"
       description: "Telegram-бот для анонимных сообщений"
     volumes:
+      - ./rules/:/app/rules/
       - ./config.yml:/app/config.yml
