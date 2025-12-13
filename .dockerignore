@@ -7,6 +7,9 @@ __pycache__/
 config.yml
 config.yml.example
 
+# Rules
+rules/
+
 # Git
 .git
 .gitignore
