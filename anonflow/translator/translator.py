@@ -1,0 +1,61 @@
+import gettext
+from functools import lru_cache
+from typing import Optional, Literal
+
+from aiogram import Bot
+from aiogram.types import Message
+
+from anonflow import __version_str__, paths
+
+
+class Translator:
+    def __init__(self):
+        self.bot = None
+
+    async def init(self, bot: Optional[Bot]):
+        if bot:
+            self.bot = await bot.get_me()
+
+    def format(self, text: str, message: Optional[Message], **extra):
+        bot = self.bot
+
+        msg_context = {}
+        if isinstance(message, Message):
+            user = message.from_user
+            msg_context = {
+                "text": (message.text or message.caption) or "",
+                "first_name": getattr(user, "first_name", ""),
+                "last_name": getattr(user, "last_name", ""),
+                "username": getattr(user, "username", ""),
+                "bot_first_name": getattr(bot, "first_name", ""),
+                "bot_last_name": getattr(bot, "last_name", ""),
+                "bot_username": getattr(bot, "username", ""),
+                "bot_version": __version_str__,
+            }
+
+        return text.format(
+            **msg_context,
+            **extra
+        )
+
+    def get(self, lang: Literal["ru"] = "ru"):
+        @lru_cache
+        def get_translator(lang: str):
+            translator = gettext.translation(
+                "messages",
+                paths.TRANSLATIONS_DIR,
+                languages=[lang],
+                fallback=True
+            )
+            return translator
+
+        translator = get_translator(lang)
+
+        def _(msgid: str, message: Optional[Message], **extra):
+            return self.format(
+                translator.gettext(msgid),
+                message=message,
+                **extra
+            )
+
+        return _
