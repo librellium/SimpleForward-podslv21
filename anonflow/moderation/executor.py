@@ -6,7 +6,6 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message
 from yarl import URL
 
-from anonflow.bot.utils.template_renderer import TemplateRenderer
 from anonflow.config import Config
 
 from .models import Events, ExecutorDeletionEvent, ModerationDecisionEvent, ModerationStartedEvent
@@ -18,14 +17,12 @@ class ModerationExecutor:
         self,
         bot: Bot,
         config: Config,
-        template_renderer: TemplateRenderer,
         planner: ModerationPlanner,
     ):
         self._logger = logging.getLogger(__name__)
 
         self.bot = bot
         self.config = config
-        self.renderer = template_renderer
 
         self.planner = planner
         self.planner.set_functions(self.delete_message, self.moderation_decision)
@@ -52,7 +49,7 @@ class ModerationExecutor:
         ):
             message_id = parsed_path[2]
             try:
-                await self.bot.delete_message(publication_chat_id, message_id)
+                await self.bot.delete_message(publication_chat_id, message_id=message_id)
                 return ExecutorDeletionEvent(success=True, message_id=message_id)
             except TelegramBadRequest:
                 return ExecutorDeletionEvent(success=False, message_id=message_id)
