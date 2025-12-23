@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Union
+from typing import Optional, Union
 
 from aiogram.types import ChatIdUnion
 
@@ -7,7 +7,7 @@ from aiogram.types import ChatIdUnion
 @dataclass
 class ExecutorDeletionEvent:
     success: bool
-    message_id: ChatIdUnion
+    message_id: Optional[ChatIdUnion] = None
 
 
 @dataclass
