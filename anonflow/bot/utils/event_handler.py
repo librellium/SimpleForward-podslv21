@@ -11,35 +11,33 @@ from anonflow.moderation.models import (
     ModerationDecisionEvent,
     ModerationStartedEvent,
 )
-
-from .template_renderer import TemplateRenderer
+from anonflow.translator import Translator
 
 
 class EventHandler:
-    def __init__(self, bot: Bot, config: Config, template_renderer: TemplateRenderer):
+    def __init__(self, bot: Bot, config: Config, translator: Translator):
         self.bot = bot
         self.config = config
-        self.renderer = template_renderer
+        self.translator = translator
 
         self._messages: Dict[ChatIdUnion, Message] = {}
 
     async def handle(self, event: Events, message: Message):
         moderation_chat_ids = self.config.forwarding.moderation_chat_ids
 
+        _ = self.translator.get()
+
         if isinstance(event, ModerationStartedEvent):
             self._messages[message.chat.id] = await message.answer(
-                await self.renderer.render(
-                    "messages/users/moderation/pending.j2",
-                    message=message
-                )
+                _("messages.user.moderation_pending", message=message)
             )
         elif isinstance(event, ModerationDecisionEvent):
             for chat_id in moderation_chat_ids:
                 if event.approved:
                     await message.bot.send_message(
                         chat_id,
-                        await self.renderer.render(
-                            "messages/staff/moderation/approved.j2",
+                        _(
+                            "messages.staff.moderation_approved",
                             message=message,
                             explanation=event.explanation,
                         )
@@ -47,8 +45,8 @@ class EventHandler:
                 else:
                     await message.bot.send_message(
                         chat_id,
-                        await self.renderer.render(
-                            "messages/staff/moderation/rejected.j2",
+                        _(
+                            "messages.staff.moderation_rejected",
                             message=message,
                             explanation=event.explanation,
                         )
@@ -60,26 +58,16 @@ class EventHandler:
                     await msg.delete()
 
             if event.approved:
-                await message.answer(
-                    await self.renderer.render(
-                        "messages/users/send/success.j2",
-                        message=message,
-                    )
-                )
+                await message.answer(_("messages.user.send_success", message=message))
             else:
-                await message.answer(
-                    await self.renderer.render(
-                        "messages/users/moderation/rejected.j2",
-                        message=message,
-                    )
-                )
+                await message.answer(_("messages.user.moderation_rejected", message=message))
         elif isinstance(event, ExecutorDeletionEvent) and moderation_chat_ids:
             for chat_id in moderation_chat_ids:
                 if event.success:
                     await message.bot.send_message(
                         chat_id,
-                        await self.renderer.render(
-                            "messages/staff/deletion/success.j2",
+                        _(
+                            "messages.staff.deletion_success",
                             message=message,
                             message_id=event.message_id,
                         )
@@ -87,8 +75,8 @@ class EventHandler:
                 else:
                     await message.bot.send_message(
                         chat_id,
-                        await self.renderer.render(
-                            "messages/staff/deletion/failure.j2",
+                        _(
+                            "messages.staff.deletion_failure",
                             message=message,
                             message_id=event.message_id,
                         )
