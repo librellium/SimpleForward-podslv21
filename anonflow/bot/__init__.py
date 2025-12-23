@@ -1,6 +1,6 @@
 from .builder import build
 from .middleware import GlobalSlowmodeMiddleware, SubscriptionMiddleware, UserSlowmodeMiddleware
-from .utils import EventHandler, MessageManager, TemplateRenderer
+from .utils import EventHandler, MessageManager
 
 __all__ = [
     "build",
@@ -9,5 +9,4 @@ __all__ = [
     "GlobalSlowmodeMiddleware",
     "SubscriptionMiddleware",
     "UserSlowmodeMiddleware",
-    "TemplateRenderer",
 ]
