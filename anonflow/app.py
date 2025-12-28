@@ -66,15 +66,15 @@ class Application:
             level=config.logging.level, # type: ignore
         )
 
-
     def _init_bot(self):
         config = self.config
 
-        if not config.bot.token: # type: ignore
-            raise ValueError()
+        bot_token = config.bot.token # type: ignore
+        if not bot_token:
+            raise ValueError("bot.token is required and cannot be empty")
 
         self.bot = Bot(
-            token=config.bot.token.get_secret_value(), # type: ignore
+            token=bot_token.get_secret_value(),
             default=DefaultBotProperties(parse_mode="HTML")
         )
         self.dispatcher = Dispatcher()
