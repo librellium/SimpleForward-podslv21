@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional
 
 from aiogram import BaseMiddleware
 from aiogram.types import ChatIdUnion, Message
