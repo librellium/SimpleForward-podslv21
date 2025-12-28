@@ -141,8 +141,8 @@ class Application:
         self._init_config()
         self._init_logging()
         self._init_bot()
-        self._postinit_bot()
         await self._init_translator()
+        self._postinit_bot()
         self._init_event_handler()
         self._init_moderation()
 
