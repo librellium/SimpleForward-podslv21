@@ -66,7 +66,12 @@ class EventHandler:
             else:
                 await message.answer(_("messages.user.moderation_rejected", message=message))
         elif isinstance(event, BotMessagePreparedEvent) and publication_channel_ids is not None:
-            for chat_id in publication_channel_ids + moderation_chat_ids:
+
+            chat_ids = moderation_chat_ids
+            if event.moderation_approved and event.is_post:
+                chat_ids += publication_channel_ids
+
+            for chat_id in chat_ids:
                 content = event.content
                 if isinstance(content, str):
                     await self.bot.send_message(

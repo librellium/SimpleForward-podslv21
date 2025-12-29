@@ -4,6 +4,7 @@ from aiogram import F, Router
 from aiogram.enums import ChatType
 from aiogram.types import Message
 
+from anonflow.bot import utils
 from anonflow.bot.events.models import BotMessagePreparedEvent
 from anonflow.bot.events.event_handler import EventHandler, ModerationDecisionEvent
 from anonflow.config import Config
@@ -28,22 +29,27 @@ class TextRouter(Router):
 
     def setup(self):
         @self.message(F.text)
-        async def on_text(message: Message):
-
+        async def on_text(message: Message, is_post: bool):
             _ = self.translator.get()
 
             moderation = self.config.moderation.enabled
-            moderation_passed = not moderation
+            moderation_approved = not moderation
 
             if (
                 message.chat.type == ChatType.PRIVATE
                 and "text" in self.config.forwarding.types
             ):
-                if moderation:
-                    async for event in self.executor.process_message(message): # type: ignore
+                msg = message.model_copy(
+                    update={"text": utils.rm_post(message.text)}
+                )
+                if moderation and is_post:
+                    async for event in self.executor.process_message(msg): # type: ignore
                         if isinstance(event, ModerationDecisionEvent):
-                            moderation_passed = event.approved
-                        await self.event_handler.handle(event, message)
+                            moderation_approved = event.approved
+                        await self.event_handler.handle(event, msg)
 
-                if moderation_passed:
-                    await self.event_handler.handle(BotMessagePreparedEvent(_("messages.channel.text", message=message)), message)
+                content = _("messages.channel.text", message=msg) if is_post else (msg.text or "")
+                await self.event_handler.handle(
+                    BotMessagePreparedEvent(content, is_post, moderation_approved),
+                    msg
+                )

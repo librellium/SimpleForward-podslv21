@@ -12,6 +12,8 @@ class PostCommandMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):
         message = extract_message(event)
 
+        data["is_post"] = False
+
         if isinstance(message, Message) and message.chat.type == ChatType.PRIVATE:
             source_text = message.text if message.text is not None else message.caption
             if not source_text:
@@ -26,13 +28,6 @@ class PostCommandMiddleware(BaseMiddleware):
             if message.text is not None and not post_text:
                 return
 
-            msg = message.model_copy(
-                deep=True,
-                update={
-                    "text": post_text,
-                    "is_post": True,
-                }
-            )
-            return await handler(msg, data)
+            data["is_post"] = True
 
         return await handler(event, data)
