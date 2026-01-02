@@ -4,12 +4,13 @@ from aiogram import F, Router
 from aiogram.enums import ChatType
 from aiogram.types import Message
 
-from anonflow.bot import utils
 from anonflow.bot.events.models import BotMessagePreparedEvent
 from anonflow.bot.events.event_handler import EventHandler, ModerationDecisionEvent
 from anonflow.config import Config
 from anonflow.moderation import ModerationExecutor
 from anonflow.translator import Translator
+
+from . import utils
 
 
 class TextRouter(Router):
@@ -30,8 +31,6 @@ class TextRouter(Router):
     def setup(self):
         @self.message(F.text)
         async def on_text(message: Message, is_post: bool):
-            _ = self.translator.get()
-
             moderation = self.config.moderation.enabled
             moderation_approved = not moderation
 
@@ -39,15 +38,14 @@ class TextRouter(Router):
                 message.chat.type == ChatType.PRIVATE
                 and "text" in self.config.forwarding.types
             ):
-                msg = message.model_copy(
-                    update={"text": utils.rm_post(message.text)}
-                )
+                msg = utils.strip_post_command(message)
                 if moderation and is_post:
                     async for event in self.executor.process_message(msg): # type: ignore
                         if isinstance(event, ModerationDecisionEvent):
                             moderation_approved = event.approved
                         await self.event_handler.handle(event, msg)
 
+                _ = self.translator.get()
                 content = _("messages.channel.text", message=msg) if is_post else (msg.text or "")
                 await self.event_handler.handle(
                     BotMessagePreparedEvent(content, is_post, moderation_approved),

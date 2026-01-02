@@ -1,11 +1,21 @@
-from typing import Optional
+from aiogram.types import Message
 
-def rm_post(text: Optional[str]):
+def strip_post_command(message: Message):
+    text = message.text or message.caption or ""
+
     if not text:
-        return ""
+        return message
 
     cmd, *rest = text.lstrip().split(maxsplit=1)
     if cmd.lower() == "/post":
-        return " ".join(rest)
+        to_update = {}
+        normalized = " ".join(rest)
 
-    return text
+        if message.caption:
+            to_update["caption"] = normalized
+        if message.text:
+            to_update["text"] = normalized
+
+        return message.model_copy(update=to_update)
+
+    return message
